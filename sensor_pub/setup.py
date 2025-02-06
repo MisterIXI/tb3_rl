@@ -20,6 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'receive_ball = sensor_pub.receive_ball_data:main',
+            'sonic_bumper_pub = sensor_pub.sonic_sensor:main',
         ],
     },
 )
