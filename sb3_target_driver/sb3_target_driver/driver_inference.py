@@ -61,8 +61,8 @@ class SB3TargetDriverInference(Node):
         self.twist_vel = 0.0
         self.twist_ang = 0.0
         # timer for inference tick
-        self.create_timer(0.1, self.inference_tick)
-        self.create_timer(0.01, self.twist_pub_loop)
+        self.create_timer(0.26, self.inference_tick)
+        self.create_timer(0.1, self.twist_pub_loop)
         
         self.ball_dir_vec = (0,0)
         self.get_logger().info("Setup finished...")
