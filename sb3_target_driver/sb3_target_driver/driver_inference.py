@@ -12,10 +12,11 @@ import tf2_ros
 from stable_baselines3 import PPO
 import math
 import time
+import argparse
 
 class SB3TargetDriverInference(Node):
     FACTOR = 2.4
-    def __init__(self):
+    def __init__(self, suppress_driving:bool = False):
         super().__init__('sb3_driver_inference')
         # Set up QoS profile for LiDAR
         self.get_logger().info("Setting up...")
@@ -59,6 +60,10 @@ class SB3TargetDriverInference(Node):
         
         self.ball_dir_vec = (0,0)
         self.get_logger().info("Setup finished...")
+        self.suppress_driving: bool = suppress_driving
+        if suppress_driving:
+            self.get_logger().warn("Driving supressed! Drop the -sd or --suppress_driving flag to resume driving!")
+        self.reset_target_marker()
 
     def lidar_callback(self, msg):
         # Suppose msg.ranges is your array of float values.
@@ -141,7 +146,8 @@ class SB3TargetDriverInference(Node):
         twist = Twist()
         twist.linear.x = self.twist_vel
         twist.angular.z = self.twist_ang
-        self.twist_pub.publish(twist)
+        if not self.suppress_driving:
+            self.twist_pub.publish(twist)
 
     def inference_tick(self):
         if self.target_point == None:
@@ -185,7 +191,11 @@ class SB3TargetDriverInference(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    inference = SB3TargetDriverInference()
+    # Argument parsing
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-sd', '--suppress_driving', action='store_true', help='Suppress driving functionality')
+    parsed_args, unknown = parser.parse_known_args()
+    inference = SB3TargetDriverInference(suppress_driving=parsed_args.suppress_driving)
     rclpy.spin(inference)
     inference.destroy_node()
     rclpy.shutdown()
