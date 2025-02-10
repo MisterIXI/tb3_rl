@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, Empty
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import PointStamped, Point
 from visualization_msgs.msg import Marker
@@ -41,6 +41,12 @@ class SB3TargetDriverInference(Node):
             self.qos_profile
         )
 
+        self.reset_target_subscription = self.create_subscription(
+            Empty,
+            "/reset_target",
+            self.reset_target_callback,
+            1
+        )
         self.target_point = None
         self.start_time = 0.0
         self.target_pub = self.create_publisher(Marker, "/target_pos", 1)
@@ -148,6 +154,11 @@ class SB3TargetDriverInference(Node):
         twist.angular.z = self.twist_ang
         if not self.suppress_driving:
             self.twist_pub.publish(twist)
+
+    def reset_target_callback(self, msg):
+        self.get_logger().warn("Reset target signal receieved! Resetting...")
+        self.target_point = None
+        self.reset_target_marker()
 
     def inference_tick(self):
         if self.target_point == None:
