@@ -195,7 +195,7 @@ class SB3TargetDriverInference(Node):
         obsv = obs["obs"]
         self.get_logger().info(f"\nTarget: ({target_local.point.x:.4f}|{target_local.point.y:.4f}) \nObs: ({obsv[0]:.4f}|{obsv[1]:.4f}) \nAction: ({action[0]:.4f}|{action[1]:.4f})")
         # self.get_logger().info(f"Action: {action}")
-
+        # TODO: implement twist lerp
         self.twist_vel = np.clip(action[0] * 0.20, -0.10, 0.20)
         self.twist_ang = action[1] * 2.0
 
