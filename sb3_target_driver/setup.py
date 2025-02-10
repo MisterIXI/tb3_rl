@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'driver_inference = sb3_target_driver.driver_inference:main',
+            'twist_test = sb3_target_driver.twist_test:main',
         ],
     },
 )
