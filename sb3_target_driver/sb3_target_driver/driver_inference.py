@@ -16,6 +16,9 @@ import argparse
 
 class SB3TargetDriverInference(Node):
     FACTOR = 2.4
+    TWIST_PUB_FREQ = 0.1
+    TWIST_ANG_RATE = 2.5 * TWIST_PUB_FREQ
+    TWIST_VEL_RATE = 0.5 * TWIST_PUB_FREQ
     def __init__(self, suppress_driving:bool = False):
         super().__init__('sb3_driver_inference')
         # Set up QoS profile for LiDAR
@@ -57,12 +60,19 @@ class SB3TargetDriverInference(Node):
 
         self.model = PPO.load("/home/turtle1/turtlebot3_ws/mt_driver_fixed_999840_steps.zip")
 
-        self.twist_pub = self.create_publisher(Twist, '/cmd_vel', 1)
+        twist_qos = rclpy.qos.QoSProfile(
+            reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
+            history=rclpy.qos.HistoryPolicy.KEEP_LAST,
+            depth=10,
+        )
+        self.twist_pub = self.create_publisher(Twist, '/cmd_vel', twist_qos)
         self.twist_vel = 0.0
+        self.vel_target = 0.0
         self.twist_ang = 0.0
+        self.ang_target = 0.0
         # timer for inference tick
         self.create_timer(0.26, self.inference_tick)
-        self.create_timer(0.1, self.twist_pub_loop)
+        self.create_timer(self.TWIST_PUB_FREQ, self.twist_pub_loop)
         
         self.ball_dir_vec = (0,0)
         self.get_logger().info("Setup finished...")
@@ -145,10 +155,27 @@ class SB3TargetDriverInference(Node):
         return math.sqrt(point.x * point.x + point.y * point.y)
 
     def pub_stop_twist(self):
+        self.vel_target = 0.0
+        self.ang_target = 0.0
         self.twist_vel = 0.0
         self.twist_ang = 0.0
 
+    def move_toward(self, src, tgt, step):
+        if src < tgt:
+            if step >= tgt - src:
+                return tgt
+            else:
+                return src + step
+        else:
+            if step >= src - tgt:
+                return tgt
+            else:
+                return src - step
+            
     def twist_pub_loop(self):
+        # move toward on vel and ang
+        self.twist_vel = self.move_toward(self.twist_vel, self.vel_target, self.TWIST_VEL_RATE)
+        self.twist_ang = self.move_toward(self.twist_ang, self.ang_target, self.TWIST_ANG_RATE)
         twist = Twist()
         twist.linear.x = self.twist_vel
         twist.angular.z = self.twist_ang
@@ -196,8 +223,10 @@ class SB3TargetDriverInference(Node):
         self.get_logger().info(f"\nTarget: ({target_local.point.x:.4f}|{target_local.point.y:.4f}) \nObs: ({obsv[0]:.4f}|{obsv[1]:.4f}) \nAction: ({action[0]:.4f}|{action[1]:.4f})")
         # self.get_logger().info(f"Action: {action}")
         # TODO: implement twist lerp
-        self.twist_vel = np.clip(action[0] * 0.20, -0.10, 0.20)
-        self.twist_ang = action[1] * 2.0
+        self.vel_target = np.clip(action[0] * 0.20, -0.10, 0.20)
+        self.ang_target = action[1] * 2.0
+        # self.get_logger().info(f"Inference took: {time.time()-self.last_inf_time:.2f}")
+        # self.last_inf_time = time.time()
 
 
 def main(args=None):
