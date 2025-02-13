@@ -58,7 +58,7 @@ class SB3TargetDriverInference(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.model = PPO.load("/home/turtle1/turtlebot3_ws/mt_driver_fixed_999840_steps.zip")
+        self.model = PPO.load("/home/turtle1/turtlebot3_ws/td_lerp_499920_steps.zip")
 
         twist_qos = rclpy.qos.QoSProfile(
             reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
