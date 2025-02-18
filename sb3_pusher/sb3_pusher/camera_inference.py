@@ -157,20 +157,20 @@ class StableBaselines3Inference(Node):
         else: 
             self.ball_visible = 1
             angle_deg = self.ball_angle * 60
+            rad = math.radians((self.ball_angle * 60) - 90)
+            
+            cos_r = math.cos(rad)
+            sin_r = math.sin(rad)
+            
+            def normalized(x, y):
+                magnitute = math.hypot(x, y)
+                if magnitute == 0:
+                    return x, y
+                return x / magnitute, y / magnitute
+            
+            self.ball_dir_vec = normalized(cos_r, sin_r)
             if angle_deg < 10 and angle_deg > -10:
                 
-                rad = math.radians((self.ball_angle * 60) - 90)
-                
-                cos_r = math.cos(rad)
-                sin_r = math.sin(rad)
-                
-                def normalized(x, y):
-                    magnitute = math.hypot(x, y)
-                    if magnitute == 0:
-                        return x, y
-                    return x / magnitute, y / magnitute
-                
-                self.ball_dir_vec = normalized(cos_r, sin_r)
                 try:
                     # map_tf = self.tf_buffer.lookup_transform("base_link", "map", rclpy.time.Time())
                     map_tf = self.tf_buffer.lookup_transform("map", "base_link", rclpy.time.Time())
@@ -282,27 +282,37 @@ class StableBaselines3Inference(Node):
         obs = {
             "obs": [
                 # target area pos
-                - point_target.point.y / 3,
-                - point_target.point.x / 3, 
+                - point_target.point.y / 2.4,
+                - point_target.point.x / 2.4, 
                 # ball information
                 #self.ball_angle,
                 self.ball_dir_vec[0],
                 self.ball_dir_vec[1],
-                - ball_pos_rel.point.y / 3,
-                - ball_pos_rel.point.x / 3,
+                # - ball_pos_rel.point.y / 2.4,
+                # - ball_pos_rel.point.x / 2.4,
+                0.0,
+                0.0,
             ]
         }
         obs["obs"].extend(self.lidar_scan)
         # self.get_logger().info(f"Observation: ({obs['obs'][2]}|{obs['obs'][3]})")
         action, _states = self.model.predict(obs)
         # swap action places
-        # tmp = action[0]
-        # action[0] = action[1]
-        # action[1] = tmp
+        tmp = action[0]
+        action[0] = action[1]
+        action[1] = tmp
         obsv = obs["obs"]
-        self.get_logger().info(f"\nTarget: ({point_target.point.x:.4f}|{point_target.point.y:.4f}) \nObs: ({obsv[0]:.4f}|{obsv[1]:.4f}) \nAction: ({action[0]:.4f}|{action[1]:.4f})")
+        self.get_logger().info(f"""
+                               \nTarget: ({point_target.point.x:.4f}|{point_target.point.y:.4f}) 
+                               \nObs: ({obsv[0]:.4f}|{obsv[1]:.4f}) 
+                               \nBall Dir: ({obsv[2]:.4f}|{obsv[3]:.4f})
+                               \nBall Pos: ({obsv[4]:.4f}|{obsv[5]:.4f})
+                               \nAction: ({action[0]:.4f}|{action[1]:.4f})""")
+        # mystr = "\n"
+        # for val in self.lidar_scan:
+        #     mystr += f"{val:.6f}\n"
+        # self.get_logger().info(mystr)
         # self.get_logger().info(f"Action: {action}")
-        # TODO: implement twist lerp
         self.vel_target = np.clip(action[0] * 0.20, -0.10, 0.20)
         self.ang_target = action[1] * 2.0
         
